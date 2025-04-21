@@ -1,3 +1,4 @@
+html = """
 <!DOCTYPE html>
 <html>
     <head>
@@ -7,14 +8,16 @@
         <h1>WebSocket Chat</h1>
         <form action="" onsubmit="sendMessage(event)">
             <input type="text" id="messageText" autocomplete="off"/>
-            <button>Send</button>
+            <button disabled id="sendButton">Send</button>
         </form>
         <ul id='messages'>
         </ul>
         <script>
-            var ws = new WebSocket("ws://localhost:8000/chat/start_session");
+            var ws = new WebSocket("/start_session");
             ws.onmessage = function(event) {
                 updateMessages(event.data, 'Assistant')
+                document.getElementById("sendButton").disabled = false;
+                
             };
 
             function updateMessages(message, sender = 'User') {
@@ -30,13 +33,17 @@
                 messages.appendChild(messageNode)
                 messages.appendChild(dividerNode)
             }
+            
             function sendMessage(event) {
                 var input = document.getElementById("messageText")
                 ws.send(input.value)
                 updateMessages(input.value)
                 input.value = ''
+                document.getElementById("sendButton").disabled = true;
+                
                 event.preventDefault()
             }
         </script>
     </body>
 </html>
+"""

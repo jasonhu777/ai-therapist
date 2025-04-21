@@ -1,2 +1,7 @@
 keys_local.py
 __pycache__/
+.aws-sam
+requirements.in
+samconfig.toml
+.DS_Store
+test.html

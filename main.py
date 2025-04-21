@@ -1,8 +1,10 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
 from core.logging import logger
 from routers import chat
+from mangum import Mangum
+from static.test_html import html
 
 app = FastAPI(title="AI Therapist")
 
@@ -11,18 +13,18 @@ app.add_middleware(
     allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
 )
 
-templates = Jinja2Templates(directory="static")
 
 app.include_router(chat.router)
 
 @app.get("/")
-def read_root():
+async def read_root():
     return {"message": "Welcome to AI Therapist"}
 
 @app.get("/chat-ui")
-def chat_ui(request: Request):
-    return templates.TemplateResponse("chat.html", {"request": request})
+async def chat_ui(request: Request):
+    return HTMLResponse(html)
 
+handler = Mangum(app)
 # from fastapi import FastAPI, WebSocket
 # from fastapi.responses import HTMLResponse
 # from static.html_code import html_code

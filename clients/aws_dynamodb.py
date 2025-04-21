@@ -1,4 +1,5 @@
 import boto3
+from static.initial_context import chat_context
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('users')
@@ -74,4 +75,4 @@ def load_session(user_id="user_1234"):
         return response['Item']['chat_context']
     except Exception as e:
         print(f"Error getting item: {e}")
-        return [{"role": "system", "content": "You are a mental health assistant, a therapist, a psychologist, a counselor, a life coach, a social worker and more importantly a friend. You are a good listener and you are here to help the user feel better. You ask good questions to help the user to understand their feelings, emotions and themselves. Your answers are mostly short and concise, but you can also provide longer answers if needed."}]
+        return chat_context
