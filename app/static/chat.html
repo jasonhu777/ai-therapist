@@ -1,19 +1,24 @@
-html_code = """
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Chat</title>
+        <meta charset="UTF-8" />
+        <title>AI Therapist Chat</title>
+        <link rel="stylesheet" href="/static/style.css" />
     </head>
     <body>
         <h1>WebSocket Chat</h1>
-        <form action="" onsubmit="sendMessage(event)">
-            <input type="text" id="messageText" autocomplete="off"/>
-            <button>Send</button>
-        </form>
+        <div id="chat">
+            <div id="messages"></div>
+
+            <form action="" onsubmit="sendMessage(event)">
+                <input id="input" placeholder="Your message…" autocomplete="off"/>
+                <button id="send">Send</button>
+            </form>
+        </div>
         <ul id='messages'>
         </ul>
         <script>
-            var ws = new WebSocket("ws://localhost:8000/start_session");
+            var ws = new WebSocket("ws://localhost:8000/chat/chat");
             ws.onmessage = function(event) {
                 var messages = document.getElementById('messages')
                 var message = document.createElement('li')
@@ -30,4 +35,3 @@ html_code = """
         </script>
     </body>
 </html>
-"""
