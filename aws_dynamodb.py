@@ -48,7 +48,7 @@ def create_account(user_id="user_1234", chat_context=[]):
         print(f"Error creating user: {e}")
     return
 
-def save_session(chat_context, user_id="user_1234"):
+def update_chat_context(chat_context, user_id="user_1234"):
     try:
         table.update_item(
             Key={
@@ -64,7 +64,7 @@ def save_session(chat_context, user_id="user_1234"):
     
     return
 
-def load_session(user_id="user_1234"):
+def get_chat_context(user_id="user_1234"):
     try:
         response = table.get_item(
             Key={
