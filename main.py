@@ -1,59 +1,76 @@
-import ai_client
-import aws_cognito
-from aws_dynamodb import create_table
-import aws_dynamodb
-from fastapi import FastAPI, WebSocket
-from fastapi.responses import HTMLResponse
-from html_code import html_code
-from chat import chat
-import uvicorn
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
+from core.logging import logger
+from routers import chat
 
-from datetime import datetime
+app = FastAPI(title="AI Therapist")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+)
 
+templates = Jinja2Templates(directory="static")
 
-app = FastAPI()
+app.include_router(chat.router)
 
 @app.get("/")
-async def get():
-    return HTMLResponse(html_code)
+def read_root():
+    return {"message": "Welcome to AI Therapist"}
+
+@app.get("/chat-ui")
+def chat_ui(request: Request):
+    return templates.TemplateResponse("chat.html", {"request": request})
+
+# from fastapi import FastAPI, WebSocket
+# from fastapi.responses import HTMLResponse
+# from static.html_code import html_code
+# from services.chat_service import handle_chat
 
 
-@app.websocket("/start_session")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    await chat(websocket)
 
-@app.post("/create_account")
-async def create_account(data: dict):
-    try:
-        user_id = data.get("user_id")
-        chat_context = data.get("chat_context", [])
+# app = FastAPI(title="AI Therapist")
+
+
+# @app.get("/")
+# async def get():
+#     return HTMLResponse(html_code)
+
+
+# @app.websocket("/start_session")
+# async def websocket_endpoint(websocket: WebSocket):
+#     await websocket.accept()
+#     await handle_chat(websocket)
+#     await websocket.close()
+
+# @app.post("/create_account")
+# async def create_account(data: dict):
+#     try:
+#         user_id = data.get("user_id")
+#         chat_context = data.get("chat_context", [])
         
-        # Create a new user in DynamoDB
-        aws_cognito.create_account(data)
-        aws_dynamodb.create_account(user_id, chat_context)
+#         # Create a new user in DynamoDB
+#         aws_cognito.create_account(data)
+#         aws_dynamodb.create_account(user_id, chat_context)
         
-        return {"message": "Account created successfully", "user_id": user_id}
-    except Exception as e:
-        return {"error": str(e)}
+#         return {"message": "Account created successfully", "user_id": user_id}
+#     except Exception as e:
+#         return {"error": str(e)}
 
-@app.post("/login")
-async def login(data: dict):
-    try:
-        user_id = data.get("user_id")
-        password = data.get("password")
+# @app.post("/login")
+# async def login(data: dict):
+#     try:
+#         user_id = data.get("user_id")
+#         password = data.get("password")
         
-        # Authenticate user
-        if aws_cognito.authenticate_user(user_id, password):
-            return {"message": "Login successful", "user_id": user_id}
-        else:
-            return {"error": "Invalid credentials"}
-    except Exception as e:
-        return {"error": str(e)}
-    
+#         # Authenticate user
+#         if aws_cognito.authenticate_user(user_id, password):
+#             return {"message": "Login successful", "user_id": user_id}
+#         else:
+#             return {"error": "Invalid credentials"}
+#     except Exception as e:
+#         return {"error": str(e)}
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
     
     

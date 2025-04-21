@@ -1,17 +1,18 @@
 from openai import OpenAI
+from core.config import settings
 
 def get_ai_client():
-    return OpenAI(api_key="sk-1933556094f645309c77f37495ddf825", base_url="https://api.deepseek.com")
+    return OpenAI(api_key = settings.openai_api_key, base_url = settings.openai_base_url)
 client = get_ai_client()
 
 # This function sends a message to the AI client and returns the response.
-def send_message_to_ai_client(chat_context, temperature=1.3, model="deepseek-chat"):
+def generate_response(chat_context, temperature=1.3):
     try:
         response = client.chat.completions.create(
-            model="deepseek-chat",
+            model= settings.openai_model,
             messages=chat_context,
             stream=False,
-            temperature=1.3,
+            temperature=temperature,
             frequency_penalty=1,
         )
         return response
@@ -20,10 +21,11 @@ def send_message_to_ai_client(chat_context, temperature=1.3, model="deepseek-cha
         return None
     
 def begin_session(chat_context):
-    return send_message_to_ai_client(chat_context, temperature=0.4)
+    print('begin_session called with chat_context:', chat_context)
+    return generate_response(chat_context, temperature=0.4)
 
 def continue_session(chat_context):
-    return send_message_to_ai_client(chat_context)
+    return generate_response(chat_context)
 
 def end_session(chat_context):
-    return send_message_to_ai_client(chat_context, temperature=0.4)
+    return generate_response(chat_context, temperature=0.4)
