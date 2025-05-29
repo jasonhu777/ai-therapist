@@ -1,5 +1,4 @@
 import boto3
-from static.initial_context import chat_context
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('users')
@@ -65,14 +64,16 @@ def save_session(chat_context, user_id="user_1234"):
     
     return
 
-def load_session(user_id="user_1234"):
+def load_session(user_id="user_1234", user_email=None):
     try:
         response = table.get_item(
             Key={
                 'user_id': user_id
             }
         )
+        
+        print(f"Loaded session for user {user_id}: {response}")
         return response['Item']['chat_context']
     except Exception as e:
         print(f"Error getting item: {e}")
-        return chat_context
+        return []

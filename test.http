@@ -1,0 +1,9 @@
+# GET http://127.0.0.1:8000/
+
+POST http://127.0.0.1:8000/chat/end_session
+Content-Type: application/json
+
+{   "session_id": "session-12345678",
+    "user_id": "user-12345676",
+    "user_email": "user@example.com"
+}

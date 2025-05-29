@@ -1,79 +1,113 @@
 import clients.ai_client as ai_client
 import clients.aws_dynamodb as aws_dynamodb
 from core.config import settings
+from google.genai import types
+from core import system_instructions
 
-async def handle_chat(websocket):
-    chat_context = aws_dynamodb.load_session()
-    print(f"Chat context: {chat_context}")
-    await begin_session(websocket, chat_context)
-    
-    while True:
-        user_message = await get_user_message(websocket, chat_context)
-        if "end session" in user_message: 
-            break
-        await continue_session(websocket, chat_context, user_message)
-    
-    await end_session(websocket, chat_context)
-    
-async def output_assistant_message(websocket, message):
-    try:
-        await websocket.send_text(message)
-    except Exception as e:
-        print(f"An error occurred: {e}")
-               
-async def get_user_message(websocket, chat_context):
-    try:
-        user_message = await websocket.receive_text()
-        return user_message
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return None
+
+import uuid
+
 
 def update_chat_context(role, content, chat_context):
-    chat_context.append({"role": role, "content": content})
+    if content is not None and content.strip() != "":
+        chat_context.append({"role": role, "content": content})
     
-
-async def begin_session(websocket, chat_context):
+async def begin_session(user_id, user_email):
     try:
-        print('begin_session start')
-        update_chat_context(settings.assistant_role, "New session started, greet the user a warm welcome, and ask about the problems that you have discussed in the previous session. Ask the user if they want to continue the session or start a new one. If you did not find any history, treat the user as a NEW CLIENT. ", chat_context)
-        print(chat_context)
-        assistant_message = ai_client.begin_session(chat_context).choices[0].message.content
-        print(assistant_message)
+        chat_context = aws_dynamodb.load_session(user_id, user_email)    
+        print('\nbegin_session start with chat_context:', chat_context)
+        session_id = str(uuid.uuid4())
 
-        await output_assistant_message(websocket, assistant_message)
+        gemini_chat_context = convert_chat_context_to_gemini(chat_context)
+        # append_start_session_message_gemini(gemini_chat_context)
+        assistant_message = ai_client.begin_session(gemini_chat_context)
+
         update_chat_context(settings.assistant_role, assistant_message, chat_context)
-        print('begin_session end: ', chat_context)
+        aws_dynamodb.save_session(chat_context, user_id)        
+
+        print('\nbegin_session end')
+
+        return {"session_id": session_id, "assistant_message": assistant_message, "ended": False}
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"An error occurred in begin_session: {e}")
         
-async def continue_session(websocket, chat_context, user_message):
+async def continue_session(session_id, user_message, user_id, user_email):
     try:
+        chat_context = aws_dynamodb.load_session(user_id, user_email)        
         update_chat_context("user", user_message, chat_context)
-        print('continue_session start')
-    
-        assistant_message = ai_client.continue_session(chat_context).choices[0].message.content
-    
-        await output_assistant_message(websocket, assistant_message)
+        print('\ncontinue_session start')
+        
+        gemini_chat_context = convert_chat_context_to_gemini(chat_context)
+        assistant_message = ai_client.continue_session(gemini_chat_context)
+        print('\ncontinue_session assistant_message:', assistant_message)
         update_chat_context(settings.assistant_role, assistant_message, chat_context)
+        aws_dynamodb.save_session(chat_context, user_id)        
         
-        print(chat_context)
-        print('continue_session end')
+        print('\ncontinue_session end')
         
-    except Exception as e:
-        print(f"An error occurred: {e}")
+        return {"session_id": session_id, "assistant_message": assistant_message, "ended": False}
 
-async def end_session(websocket, chat_context):
+    except Exception as e:
+        print(f"An error occurred in continue_session: {e}")
+
+async def end_session(session_id, user_id, user_email):
     try:
-        print('end_session start')
-        
-        update_chat_context("system", "The session has ended. Generate a summary of the conversation, output the summary into bullet points. Outlines the emotions of the user, on a scale of 1 to 10, how strong these emotions are, and how the user felt during the session. The summary should be concise and easy to read. If there is not enough information, just output talk to you next time.", chat_context)
-        assistant_message = ai_client.end_session(chat_context).choices[0].message.content
-        await output_assistant_message(websocket, assistant_message)
-        update_chat_context(settings.assistant_role, assistant_message, chat_context)
-        aws_dynamodb.save_session(chat_context)        
+        print('\nend_session start')
 
-        print('end_session end')
+        chat_context = aws_dynamodb.load_session(user_id, user_email)
+        
+        gemini_chat_context = convert_chat_context_to_gemini(chat_context)
+        
+        assistant_message = ai_client.end_session(gemini_chat_context)
+        update_chat_context(settings.assistant_role, assistant_message, chat_context)
+        aws_dynamodb.save_session(chat_context, user_id)        
+
+        print('\nend_session end')
+        return {"session_id": session_id, "assistant_message": assistant_message, "ended": True}
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"An error occurred in end_session: {e}")
+        
+def convert_chat_context_to_gemini(chat_context):
+    chat_context_gemini = []
+    
+    for message in chat_context:
+        if message['role'] == 'user':
+            chat_context_gemini.append(
+                types.UserContent(
+                    parts=[types.Part.from_text(text=message['content'])],
+                )
+            )
+        elif message['role'] == 'assistant':
+            chat_context_gemini.append(types.ModelContent(
+                parts=[types.Part.from_text(text=message['content'])],
+            ))
+
+    print('\nconvert_chat_context_to_gemini chat_context_gemini:', chat_context_gemini)
+    
+    if not chat_context_gemini:
+        append_user_message_gemini(chat_context_gemini)
+    elif chat_context_gemini[-1].role != 'user':
+        append_user_message_gemini(chat_context_gemini)
+    return chat_context_gemini
+
+def convert_gemini_to_chat_context(chat_context_gemini):
+    chat_context = []
+    
+    for message in chat_context_gemini:
+        if message['role'] == 'user':
+            chat_context.append({'role': 'user', 'content': message['parts'][0]['text']})
+        elif message['role'] == 'model':
+            chat_context.append({'role': 'assistant', 'content': message['parts'][0]['text']})
+
+    return chat_context
+
+def append_user_message_gemini(chat_context_gemini, user_message=""):
+    print('\nappend_user_message')
+    chat_context_gemini.append(types.UserContent(parts=[types.Part.from_text(text=user_message)]))
+    return chat_context_gemini
+
+# def append_start_session_message_gemini(chat_context_gemini):
+#     print('\nappend_start_session_message')
+#     append_user_message_gemini(chat_context_gemini, system_instructions.begin_session_instruction)
+#     return chat_context_gemini
