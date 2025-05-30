@@ -48,7 +48,7 @@ def create_account(user_id="user_1234", chat_context=[]):
         print(f"Error creating user: {e}")
     return
 
-def save_session(chat_context, user_id="user_1234"):
+def save_session(chat_context, user_id="user_1234", user_email=None):
     try:
         table.update_item(
             Key={
@@ -75,5 +75,4 @@ def load_session(user_id="user_1234", user_email=None):
         print(f"Loaded session for user {user_id}: {response}")
         return response['Item']['chat_context']
     except Exception as e:
-        print(f"Error getting item: {e}")
-        return []
+        raise Exception(f"Error getting item: {e}")

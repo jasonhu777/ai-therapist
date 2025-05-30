@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.5-flash-preview-05-20"
     assistant_role: str = "assistant"
     user_role: str = "user"
+    system_role: str = "system"
     # aws_access_key_id: str
     # aws_secret_access_key: str
     # aws_region: str = "us-east-1"
